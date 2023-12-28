@@ -4,27 +4,39 @@ import random
 from datetime import datetime
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 
-DATA_FILE_PATH = '/home/ujin/Desktop/bitcoin/trace_code/hacker_addresses.csv'
+DATA_FILE_PATH = '/home/ujin/Desktop/bitcoin/bit_trace/hacker_addresses.csv'
 
 def create_rpc_connection():
     rpc_user = 'ujin'
     rpc_password = '7749'
     rpc_host = '127.0.0.1'
     rpc_port = '8332'
-    return AuthServiceProxy(f"http://{rpc_user}:{rpc_password}@{rpc_host}:{rpc_port}")
+    wallet_name = 'ujin' 
+    print(f"Connecting to RPC server at {rpc_host}:{rpc_port}")
+    try:
+        connection = AuthServiceProxy(f"http://{rpc_user}:{rpc_password}@{rpc_host}:{rpc_port}/wallet/{wallet_name}")
+        print("Successfully connected to RPC server.")
+        return connection
+    except Exception as e:
+        print(f"Failed to connect to RPC server: {e}")
 
 def load_hackers_data(file_path):
     hackers_data = []
 
     if not os.path.exists(file_path):
-        print("File not found.")
+        print("File not found:", file_path)
         return hackers_data
+    print(f"Loading hacker data from {file_path}")
 
     with open(file_path, 'r') as file:
+        # Skip the header line
+        next(file)
         for line in file.readlines():
-            hacker_address = line.strip()
-            hackers_data.append({'hacker_address': hacker_address, 'report_type': "sextortion"})
-
+            # Split by comma and strip whitespace
+            hacker_address, report_type = line.strip().split(',')
+            hackers_data.append({'hacker_address': hacker_address, 'report_type': report_type})
+    for hacker in hackers_data:
+        print("Loaded address:", hacker['hacker_address'])
     return hackers_data
 
 def check_repeated_address(transactions, threshold=1):
@@ -49,47 +61,42 @@ def write_transaction_to_file(transaction_data, output_filename):
     with open(output_filename, 'a') as f:
         f.write(','.join(str(value) for value in transaction_data.values()) + '\n')
 
-
-def get_transactions(hacker_address, report_type, rpc_client):
-    hacker_transactions = []
-    delay = 30
-    max_delay = 60
-    repeated_addresses_filename = 'repeated_addresses.txt'
-    output_filename = f"{report_type}.Transaction_{hacker_address}.csv"
-    processed_addresses = set()
+def get_transactions(hacker_address, rpc_client):
 
     try:
-        address_transactions = rpc_client.listtransactions("*", 10000, 0, True)
-        for tx in address_transactions:
+        # 해커 주소와 관련된 모든 트랜잭션 조회
+        transactions = rpc_client.listtransactions("*", 10000, 0, True)
+        
+        hacker_transactions = []
+        for tx in transactions:
+            # 트랜잭션에서 해커 주소 찾기
             if 'address' in tx and tx['address'] == hacker_address:
                 transaction_data = {
-                    'tx_hash': tx['txid'],
-                    'sending_wallet': hacker_address,
-                    'receiving_wallet': tx['address'],
-                    'transaction_amount': tx['amount'],
-                    'coin_type': 'BTC',
-                    'date_sent': datetime.fromtimestamp(tx['time']).strftime('%Y-%m-%d'),
-                    'time_sent': datetime.fromtimestamp(tx['time']).strftime('%H:%M:%S')
+                    'txid': tx['txid'],
+                    'address': tx['address'],
+                    'category': tx['category'],
+                    'amount': tx['amount'],
+                    'time': datetime.fromtimestamp(tx['time']).strftime('%Y-%m-%d %H:%M:%S')
                 }
                 hacker_transactions.append(transaction_data)
-                write_transaction_to_file(transaction_data, output_filename)
-                if tx['address'] not in processed_addresses:
-                    processed_addresses.add(tx['address'])
-
-        repeated_address = check_repeated_address(hacker_transactions)
-        if repeated_address:
-            with open(repeated_addresses_filename, 'a') as f:
-                f.write(f"{repeated_address}\n")
+        
+        # 해커와 관련된 트랜잭션 출력
+        print(f"Found {len(hacker_transactions)} transactions related to the address.")
+        for transaction in hacker_transactions:
+            print(transaction)
     except JSONRPCException as e:
         print(f"RPC error: {e}")
-        time.sleep(delay)
-        delay = min(delay * 2, max_delay)
-
+        time.sleep(30)
+        
 def main():
+    print("Starting the script...")
     rpc_client = create_rpc_connection()
     hackers_data = load_hackers_data(DATA_FILE_PATH)
+    if not hackers_data:
+        print("No hacker data to process. Exiting.")
+        return
     for hacker_data in hackers_data:
-        get_transactions(hacker_data['hacker_address'], hacker_data['report_type'], rpc_client)
+        get_transactions(hacker_data['hacker_address'], rpc_client)
 
 if __name__ == '__main__':
     main()
