@@ -62,31 +62,29 @@ def write_transaction_to_file(transaction_data, output_filename):
         f.write(','.join(str(value) for value in transaction_data.values()) + '\n')
 
 def get_transactions(hacker_address, rpc_client):
-
     try:
-        # 해커 주소와 관련된 모든 트랜잭션 조회
-        transactions = rpc_client.listtransactions("*", 10000, 0, True)
+        # 주소와 관련된 모든 트랜잭션 ID를 조회
+        txids = rpc_client.getaddresstxids({"addresses": [hacker_address]})
         
         hacker_transactions = []
-        for tx in transactions:
-            # 트랜잭션에서 해커 주소 찾기
-            if 'address' in tx and tx['address'] == hacker_address:
-                transaction_data = {
-                    'txid': tx['txid'],
-                    'address': tx['address'],
-                    'category': tx['category'],
-                    'amount': tx['amount'],
-                    'time': datetime.fromtimestamp(tx['time']).strftime('%Y-%m-%d %H:%M:%S')
-                }
-                hacker_transactions.append(transaction_data)
-        
-        # 해커와 관련된 트랜잭션 출력
+        for txid in txids:
+            # 각 트랜잭션 ID에 대한 트랜잭션 정보 조회
+            transaction = rpc_client.getrawtransaction(txid, 1)  # 1은 디코딩된 트랜잭션을 반환하도록 지정
+
+            # 필요한 데이터만 추출
+            transaction_data = {
+                'txid': transaction['txid'],
+                'time': datetime.fromtimestamp(transaction['time']).strftime('%Y-%m-%d %H:%M:%S'),
+                'details': transaction['details']
+            }
+            hacker_transactions.append(transaction_data)
+
+        # 관련 트랜잭션 출력
         print(f"Found {len(hacker_transactions)} transactions related to the address.")
         for transaction in hacker_transactions:
             print(transaction)
-    except JSONRPCException as e:
-        print(f"RPC error: {e}")
-        time.sleep(30)
+    except Exception as e:
+        print(f"Error: {e}")
         
 def main():
     print("Starting the script...")
