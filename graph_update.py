@@ -220,11 +220,12 @@ def main():
         return
 
     # 첫 번째 해커 주소에 대해서만 트랜잭션 추적을 수행합니다.
-    hacker_data = hackers_data[0]
-    G = get_transactions(hacker_data['hacker_address'], hacker_data['report_type'])
+    for i in range(100):
+        hacker_data = hackers_data[i]
+        G = get_transactions(hacker_data['hacker_address'], hacker_data['report_type'])
 
     # 추적 완료된 그래프 시각화를 위한 함수 호출
-    visualize_graph(G, hacker_data['hacker_address'])
+        visualize_graph(G, hacker_data['hacker_address'])
 
 
 if __name__ == '__main__':
