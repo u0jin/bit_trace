@@ -7,7 +7,7 @@ rpc_host = '127.0.0.1'
 rpc_port = '8332'
 
 # Known transaction ID (replace with a real TXID from your blockchain)
-txid = '013b1bc7b6bb1318c4cd2262f33a6ccd0470718c91266f8736f8b59bfc166ada'
+txid = '19e66f833cad8490beb92f231295a99f972641b533367e5497aade1891bbf9a5'
 
 # Create a connection to the Bitcoin node
 rpc_connection = AuthServiceProxy(f"http://{rpc_user}:{rpc_password}@{rpc_host}:{rpc_port}")
