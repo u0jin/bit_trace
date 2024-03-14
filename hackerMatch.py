@@ -2,7 +2,6 @@ import csv
 import json
 import os
 
-# Load hacker addresses from CSV
 def load_hacker_addresses(csv_file):
     hacker_addresses = []
     with open(csv_file, mode='r') as infile:
@@ -11,7 +10,6 @@ def load_hacker_addresses(csv_file):
             hacker_addresses.append(row['hacker_address'])
     return hacker_addresses
 
-# Check if transaction involves a hacker address
 
 def check_transaction(tx_details, hacker_addresses):
     with open(tx_details, 'r') as f:
@@ -24,7 +22,6 @@ def check_transaction(tx_details, hacker_addresses):
     return False, None
 
 
-# Main function to process transactions
 def process_transactions(tx_dir, hacker_addresses, output_dir):
     matching_transactions = []
     for filename in os.listdir(tx_dir):
@@ -34,8 +31,7 @@ def process_transactions(tx_dir, hacker_addresses, output_dir):
             tx_id = filename.replace('_details.json', '')
             matching_transactions.append((tx_id, address))
 
-    # Save matching transactions
-    with open(os.path.join(output_dir, 'matching_transactions.csv'), 'w', newline='') as f:
+    with open(os.path.join(output_dir, 'vout_matching_transactions.csv'), 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['tx_id', 'hacker_address'])
         writer.writerows(matching_transactions)

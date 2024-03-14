@@ -20,14 +20,13 @@ def extract_block_hashes(dat_file_path, output_file_path):
         while True:
             magic = file.read(4)
             if not magic:
-                break  # End of file
+                break  
             size = struct.unpack('<I', file.read(4))[0]
             header = file.read(80)  # Block header
             hash = double_sha256(header)[::-1].hex()  # Reverse hash for correct endianness
             output.write(hash + '\n')
             _ = file.read(size - 80)  # Skip the rest of the block
 
-# .dat 파일의 정확한 경로를 지정하세요.
 dat_file_path_Str = '/home/ujin/.bitcoin/blocks/blk00000.dat'
 output_file_path_Str = '/home/ujin/Desktop/bitcoin/bit_trace/block_hashes.txt'
 extract_block_hashes(dat_file_path_Str, output_file_path_Str)

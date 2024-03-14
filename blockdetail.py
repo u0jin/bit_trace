@@ -2,13 +2,11 @@ from bitcoinrpc.authproxy import AuthServiceProxy
 import json
 import os
 
-# Configuration for your node
 rpc_user = 'ujin'
 rpc_password = '7749'
 rpc_host = '127.0.0.1'
 rpc_port = '8332'
 
-# Path to the file containing block hashes and directory for output
 block_hashes_file = '/home/ujin/Desktop/bitcoin/bit_trace/block_hashes.txt'
 output_dir = '/home/ujin/Desktop/bitcoin/bit_trace/blockDetail'
 
