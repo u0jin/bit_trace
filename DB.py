@@ -5,10 +5,10 @@ import struct
 from py2neo import Graph, Node, Relationship
 from bitcoinrpc.authproxy import AuthServiceProxy
 import hashlib
-
+from decimal import Decimal
 
 # Neo4j 데이터베이스 연결 설정
-graph = Graph("bolt://localhost:7687", auth=("neo4j", "your_password"))
+graph = Graph("bolt://localhost:7687", auth=("ujin", "tryit5826"))
 
 # Bitcoin RPC 연결 설정
 rpc_user = 'ujin'
@@ -27,11 +27,16 @@ hacker_addresses_csv = '/home/ujin/Desktop/bitcoin/bit_trace/hacker_addresses.cs
 
 # 해커 주소 로드 함수
 def load_hacker_addresses(csv_file):
-    hacker_addresses = []
+    hacker_addresses = {}
     with open(csv_file, mode='r') as infile:
-        reader = csv.DictReader(infile)
-        for row in reader:
-            hacker_addresses.append(row['hacker_address'])
+        lines = infile.readlines()
+        for line in lines[1:]:  # 헤더 행 건너뛰기
+            values = line.strip().split(' ', 1)  # 첫 번째 공백을 기준으로 분할
+            if len(values) == 2:
+                hacker_address, report_type = values
+                hacker_addresses[hacker_address] = report_type
+            else:
+                print(f"Skipping invalid line: {line.strip()}")
     return hacker_addresses
 
 def double_sha256(header):
@@ -55,6 +60,12 @@ def extract_and_save_block_hashes():
 # 블록 상세 정보 가져오기 및 저장 함수
 def fetch_and_save_block_details(block_hash):
     block = rpc_connection.getblock(block_hash)
+    
+    # 블록 상세 정보의 값을 확인하고 Decimal 타입인 경우 float로 변환
+    for key, value in block.items():
+        if isinstance(value, Decimal):
+            block[key] = float(value)
+    
     block_node = Node("Block", hash=block_hash)
     block_node.update(block)
     graph.merge(block_node, "Block", "hash")
@@ -65,13 +76,19 @@ def fetch_and_save_block_details(block_hash):
 def fetch_and_save_tx_details(txid):
     try:
         tx_details = rpc_connection.getrawtransaction(txid, True)
+        
+        # `value` 필드의 타입을 확인하고 필요한 경우 float로 변환
+        for vout in tx_details.get('vout', []):
+            if isinstance(vout.get('value'), Decimal):
+                vout['value'] = float(vout['value'])
+
         tx_node = Node("Transaction", txid=txid)
         tx_node.update(tx_details)
         graph.merge(tx_node, "Transaction", "txid")
 
         print(f"Transaction details saved for TXID: {txid}")
     except Exception as e:
-        print(f"Error fetching transaction details for TXID: {txid}")
+        print(f"Error fetching transaction details for TXID: {txid}: {e}")
 
 # 출금 지갑 주소 추출 및 저장 함수
 def extract_and_save_wallet_addresses(tx_details_file):
@@ -102,14 +119,17 @@ def match_hacker_addresses(wallet_add_file, hacker_addresses):
                 addresses = vout['scriptPubKey']['addresses']
                 for address in addresses:
                     if address in hacker_addresses:
-                        hacker_node = Node("HackerAddress", address=address)
+                        report_type = hacker_addresses[address]
+                        hacker_node = Node("HackerAddress", address=address, report_type=report_type)
                         graph.merge(hacker_node, "HackerAddress", "address")
                         tx_node = graph.nodes.match("Transaction", txid=txid).first()
                         if tx_node:
                             graph.create(Relationship(tx_node, "OUTPUTS", hacker_node))
-                        print(f"Hacker address match found: {address} in TXID: {txid}")
+                        print(f"Hacker address match found: {address} (Report Type: {report_type}) in TXID: {txid}")
 
     print(f"Hacker address matching completed for wallet address file: {wallet_add_file}")
+
+
 # 메인 함수
 def main():
     # 해커 주소 로드
